@@ -28,13 +28,10 @@ def main():
 
 	filetypes = tuple(getExtensionsForType('image'))
 	domains = 'imgur', 'tumblr', 'gfycat', 'youtube', 'youtu.be', 'reddituploads', 'redditmedia', 'fbcdn'
-	# skip youtube, fbcdn
-
-	filetypeFlag = False
-	domainFlag = False
+	# skip youtube, fbcdn when downloading
 
 	# empty file
-	#open('rogue_files.txt', 'w')
+	open('rogue_files.txt', 'w')
 	
 	for i in range(numberOfMonths):
 		for j in range(1,numberOfScoreRanges):
@@ -46,8 +43,6 @@ def main():
 				if not imageURL.endswith(filetypes) and not any(s in imageURL for s in domains):
 					with open('rogue_files.txt','a') as f:
 						f.write(imageURL + '\n')
-
-
 
 if __name__ == '__main__':
 	main()

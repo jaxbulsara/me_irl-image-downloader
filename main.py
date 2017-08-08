@@ -1,12 +1,14 @@
 # me_irl Image Downloader
 # Author: Jay Bulsara
 
-import psycopg2
+# uses leonardicus's imgur downloader: https://github.com/leonardicus/imgurdl
+
 import logging
 from os import listdir
-
-from archiveHelper import read
 import mimetypes
+
+from archiveHelper import read, count
+from downloadHelper import downloadHelper
 
 def main():
 	logging.basicConfig(format='%(levelname)s:%(message)s', level=logging.DEBUG)
@@ -19,30 +21,32 @@ def main():
 	userCol = 4
 	postCol = 5
 
-	mimetypes.init()
-
-	def getExtensionsForType(generalType):
-		for ext in mimetypes.types_map:
-			if mimetypes.types_map[ext].split('/')[0] == generalType:
-				yield ext
-
-	filetypes = tuple(getExtensionsForType('image'))
-	domains = 'imgur', 'tumblr', 'gfycat', 'youtube', 'youtu.be', 'reddituploads', 'redditmedia', 'fbcdn'
-	# skip youtube, fbcdn when downloading
-
 	# empty file
 	open('rogue_files.txt', 'w')
 	
-	for i in range(numberOfMonths):
-		for j in range(1,numberOfScoreRanges):
-			posts = read(i,j)
-			for k in range(len(posts)):
-				imageURL = posts[k][imageCol]
+	# for i in range(numberOfMonths):
+	# 	for j in range(1,numberOfScoreRanges):
+	# 		posts = read(i,j)
+	# 		for k in range(len(posts)):
+	# 			imageURL = posts[k][imageCol]
+	# 			download(imageURL)
 
-				# check if filetype or domain exists
-				if not imageURL.endswith(filetypes) and not any(s in imageURL for s in domains):
-					with open('rogue_files.txt','a') as f:
-						f.write(imageURL + '\n')
+	# posts = read(0,0)
+	# for k in range(100):
+	# 	imageURL = posts[k][imageCol]
+	# 	downloadHelper(imageURL)
+
+	with open('postCounts.csv', 'w') as f:
+		for i in range(numberOfMonths):
+			f.write(str(i) + ',')
+			for j in range(numberOfScoreRanges):
+				postCount = count(i, j)
+				f.write(str(postCount))
+				if j < numberOfScoreRanges - 1:
+					f.write(',')
+				else:
+					f.write('\n')
+				
 
 if __name__ == '__main__':
 	main()

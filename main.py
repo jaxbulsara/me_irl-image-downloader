@@ -8,10 +8,10 @@ from os import listdir
 import mimetypes
 
 from archiveHelper import read, count
-from downloadHelper import downloadHelper
+from downloadHelper import downloadHelper, download
 
 def main():
-	logging.basicConfig(format='%(levelname)s:%(message)s', level=logging.DEBUG)
+	# logging.basicConfig(format='%(levelname)s:%(message)s', level=logging.INFO)
 	numberOfMonths = 18
 	numberOfScoreRanges = 5
 	dateCol = 0
@@ -21,7 +21,7 @@ def main():
 	userCol = 4
 	postCol = 5
 
-	# empty file
+	# empty rogue_files.txt
 	open('rogue_files.txt', 'w')
 	
 	# for i in range(numberOfMonths):
@@ -35,18 +35,10 @@ def main():
 	# for k in range(100):
 	# 	imageURL = posts[k][imageCol]
 	# 	downloadHelper(imageURL)
+	url = 'https://google.com/IiKfKFn.png'
+	imagePath = downloadHelper(url)
+	print(imagePath)
 
-	with open('postCounts.csv', 'w') as f:
-		for i in range(numberOfMonths):
-			f.write(str(i) + ',')
-			for j in range(numberOfScoreRanges):
-				postCount = count(i, j)
-				f.write(str(postCount))
-				if j < numberOfScoreRanges - 1:
-					f.write(',')
-				else:
-					f.write('\n')
-				
 
 if __name__ == '__main__':
 	main()

@@ -1,7 +1,3 @@
-def func():
-	x = '1'
-	y = '2'
-	return (x, y)
+import imgurdl
 
-(x, y) = func()
-print(x + ' ' + y)
+imgurdl.main(['-i', 'http://www.imgur.com/IiKfKFn'])

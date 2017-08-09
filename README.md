@@ -13,3 +13,4 @@ This project is licensed under the MIT License - see the [LICENSE.md](LICENSE.md
 ## Acknowledgments
 
 * Thanks to [leonardicus](https://github.com/leonardicus) for writing [imgurdl](https://github.com/jaxbulsara/imgurdl), which I used for all imgur links.
+* Thanks to [peoplma](https://github.com/peoplma) and [healdb](https://github.com/healdb) for writing [subredditarchive](https://github.com/peoplma/subredditarchive), which I modified to scrape all the post data.

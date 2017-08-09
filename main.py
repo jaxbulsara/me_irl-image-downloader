@@ -35,7 +35,7 @@ def main():
 	# for k in range(100):
 	# 	imageURL = posts[k][imageCol]
 	# 	downloadHelper(imageURL)
-	url = 'https://google.com/IiKfKFn.png'
+	url = 'http://imgur.com/a/TuT7t'
 	imagePath = downloadHelper(url)
 	print(imagePath)
 

@@ -2,6 +2,7 @@ from imgurdl import ImgurDL
 import mimetypes
 import logging
 import os
+import urllib3
 
 def downloadHelper(url):
 	mimetypes.init()
@@ -9,7 +10,7 @@ def downloadHelper(url):
 	filetypes = tuple(getExtensionsForType('image'))
 	domains = 'imgur', 'tumblr', 'gfycat', 'youtube', 'youtu.be', 'reddituploads', 'redditmedia', 'fbcdn'
 
-	# no file extension and no domain - rogue
+	# no file extension and no known domain - rogue
 	if not url.split('?')[0].endswith(filetypes) and not any(s in url for s in domains):
 		with open('rogue_files.txt','a') as f:
 			# logging.info('rogue file: ' + url)
@@ -65,7 +66,6 @@ def downloadImgur(url):
 	else:
 		imgur.token_list.add((token, 'image'))
 
-	print(imgur.token_list)
 
 	imgur.extract_urls(imgur.token_list)
 	imgur.save_images()
@@ -77,7 +77,8 @@ def downloadImgur(url):
 	return imagePath
 
 def downloadFileExt(url):
-	imagePath = 'PLACEHOLDER'
+	http = urllib3.PoolManager()
+
 	return imagePath
 
 

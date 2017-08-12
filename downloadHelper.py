@@ -29,6 +29,9 @@ class DownloadHelper():
 	def analyze(self):
 		# analyzes an image url and checks if it contains a known filetype or domain. If not, the url is marked as rogue. If either exist, the download is viable and and argument list is built
 
+		# reset args
+		self.args = {}
+
 		url = self.post['imageurl']
 		self.args['url'] = url
 
@@ -73,7 +76,6 @@ class DownloadHelper():
 			self.downloadFacebook(url)
 
 		elif fileExt != '':
-			print(fileExt)
 			self.downloadGeneral(url)
 
 		elif domain == 'reddituploads':
@@ -90,30 +92,30 @@ class DownloadHelper():
 		# urls with an image and a known extension
 		# should be pretty straightforward
 		self.post['imagepath'] = ''
-		self.outputFlag = 'general'
+		self.outputFlag = 'archive'
 
 	def downloadImgur(self, url):
 		# use ImgurDL
 		self.post['imagepath'] = ''
-		self.outputFlag = 'imgur'
+		self.outputFlag = 'archive'
 
 
 	def downloadFacebook(self, url):
 		# need to get me_irl post url for the picture
 		self.post['imagepath'] = ''
-		self.outputFlag = 'facebook'
+		self.outputFlag = 'archive'
 
 
 	def downloadReddituploads(self, url):
 		# need to find out image type when http request is made
 		self.post['imagepath'] = ''
-		self.outputFlag = 'reddituploads'
+		self.outputFlag = 'archive'
 
 
 	def downloadGfycat(self, url):
 		# gotta parse html page for the image
 		self.post['imagepath'] = ''
-		self.outputFlag = 'gfycat'
+		self.outputFlag = 'archive'
 
 
 	def setPost(self, post):

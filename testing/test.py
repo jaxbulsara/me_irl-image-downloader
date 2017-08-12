@@ -1,30 +1,17 @@
-import os
+import mimetypes
 
-os.rename('nicknames.txt', 'temp_nicknames.txt')
+def getExtensionsForType(generalType):
+	for ext in mimetypes.types_map:
+		if mimetypes.types_map[ext].split('/')[0] == generalType:
+			yield ext
+		yield '.gifv'
 
-f = open('nicknames.txt', 'w')
-f_tmp = open('temp_nicknames.txt', 'r')
-f_new = open('removed_nicknames.txt', 'w')
+mimetypes.init()
+filetypes = tuple(getExtensionsForType('image'))
 
-i = 0
-j = 0
-k = 0
+url = 'https://40.media.tumblr.com/9b488440d40f8aee15bcf865b888a292/tumblr_o06u8mq3FV1v27d59o1_540.png'
 
-for line in f_tmp.readlines():
-	i += 1
-	if 'John' in line:
-		j += 1
-		f_new.write(line)
-	else:
-		k += 1
-		f.write(line)
+if url.split('?')[0].endswith(filetypes):
+	fileExt = '.' + url.split('?')[0].split('.')[-1]
 
-f.close()
-f_tmp.close()
-f_new.close()
-
-# make sure all lines are accounted for before deleting temporary file
-if i == j + k:
-	os.remove('temp_nicknames.txt')
-else:
-	print('Error: some lines were lost.')
+print(fileExt)

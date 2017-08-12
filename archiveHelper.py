@@ -15,7 +15,7 @@ class ArchiveHelper():
 		# folder names
 		self.archive = 'archive'
 
-		self.scoreRanges = ['test.txt', '1001-5000.txt', '501-1000.txt', '51-500.txt','0-50.txt']
+		self.scoreRanges = ['5001-inf.txt', '1001-5000.txt', '501-1000.txt', '51-500.txt','0-50.txt']
 		self.dates = os.listdir(self.archive)
 
 		# filenames
@@ -56,7 +56,11 @@ class ArchiveHelper():
 	def setPost(self, line, postfields = ['date', 'imageurl', 'score', 'title', 'user', 'posturl']):
 		i = 0
 
-		for field in str.split(str.replace(line,'\r\n', ''), ','):
+		# remove newlines and carriage returns
+		line = line.replace('\n', '')
+		line = line.replace('\r', '')
+
+		for field in str.split(line, ','):
 			self.post[postfields[i]] = field
 			i += 1
 
@@ -106,9 +110,6 @@ class ArchiveHelper():
 
 	def cleanup(self):
 		self.f.close()
-
-		print('reads: ' + str(self.readCount))
-		print('writes: ' + str(self.writeCount))
 
 		# if no writes occur, rename temp file back to original
 		if self.writeCount == 0:

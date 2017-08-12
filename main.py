@@ -27,6 +27,7 @@ def main():
 
 				# read file line by line
 				for line in archiveHelper.f:
+
 					# extract post data
 					archiveHelper.setPost(line)
 
@@ -36,8 +37,10 @@ def main():
 					# run download helper
 					downloadHelper.run()
 
+					# transfer post to proper directory
+					archiveHelper.transfer(downloadHelper.post, downloadHelper.outputFlag)
+
 					# debugging - only read first post
-					# break
 
 			finally:
 				f.close()

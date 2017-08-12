@@ -21,11 +21,9 @@ class DownloadHelper():
 		# initialize post info list
 		self.post = {}
 
-		# output flag: rogue, removed, downloaded, skipped
+		# output flag: rogue, removed, downloaded, skipped, archive
+		# this is the folder the post will be moved to
 		self.outputFlag = ''
-
-		# path to saved image
-		self.imagepath = ''
 
 
 	def analyze(self):
@@ -68,13 +66,14 @@ class DownloadHelper():
 			self.downloadImgur(url)
 
 		elif domain == 'youtube' or domain == 'youtu.be':
-			self.imagepath = ''
+			self.post['imagepath'] = ''
 			self.outputflag = 'video'
 
 		elif domain == 'fbcdn':
 			self.downloadFacebook(url)
 
 		elif fileExt != '':
+			print(fileExt)
 			self.downloadGeneral(url)
 
 		elif domain == 'reddituploads':
@@ -83,35 +82,38 @@ class DownloadHelper():
 		elif domain == 'gfycat':
 			self.downloadGfycat(url)
 
+		else:
+			raise Exception
+
 
 	def downloadGeneral(self, url):
 		# urls with an image and a known extension
 		# should be pretty straightforward
-		self.imagepath = '-ext'
-		self.outputFlag = 'downloaded'
+		self.post['imagepath'] = ''
+		self.outputFlag = 'general'
 
 	def downloadImgur(self, url):
 		# use ImgurDL
-		self.imagepath = '-imgur'
-		self.outputFlag = 'downloaded'
+		self.post['imagepath'] = ''
+		self.outputFlag = 'imgur'
 
 
 	def downloadFacebook(self, url):
 		# need to get me_irl post url for the picture
-		self.imagepath = '-facebook'
-		self.outputFlag = 'downloaded'
+		self.post['imagepath'] = ''
+		self.outputFlag = 'facebook'
 
 
 	def downloadReddituploads(self, url):
 		# need to find out image type when http request is made
-		self.imagepath = '-reddituploads'
-		self.outputFlag = 'downloaded'
+		self.post['imagepath'] = ''
+		self.outputFlag = 'reddituploads'
 
 
 	def downloadGfycat(self, url):
 		# gotta parse html page for the image
-		self.imagepath = '-gfycat'
-		self.outputFlag = 'downloaded'
+		self.post['imagepath'] = ''
+		self.outputFlag = 'gfycat'
 
 
 	def setPost(self, post):
@@ -132,5 +134,3 @@ class DownloadHelper():
 		# if url is viable, download image
 		if self.downloadFlag:
 			self.download(**self.args)
-
-		print(self.outputFlag + ', ' + self.imagepath)

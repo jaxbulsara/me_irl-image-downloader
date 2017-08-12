@@ -23,6 +23,8 @@ def main():
 			archiveHelper.setup(i,j)
 
 			try:
+				f = open('testing/sortTest.txt', 'w')
+
 				# read file line by line
 				for line in archiveHelper.f:
 					# extract post data
@@ -35,9 +37,10 @@ def main():
 					downloadHelper.run()
 
 					# debugging - only read first post
-					break
-			
+					# break
+
 			finally:
+				f.close()
 				archiveHelper.cleanup()
 
 

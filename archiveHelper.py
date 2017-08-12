@@ -17,6 +17,7 @@ class ArchiveHelper():
 		self.rogue = 'rogue'
 		self.removed = 'removed'
 		self.downloaded = 'downloaded'
+		self.video = 'video'
 
 		self.scoreRanges = ['5001-inf.txt', '1001-5000.txt', '501-1000.txt', '51-500.txt','0-50.txt']
 		self.dates = os.listdir(self.archive)
@@ -58,10 +59,9 @@ class ArchiveHelper():
 		return os.path.join(folder, self.filename)
 
 
-	def setPost(self, line):
-		postfields = ['date', 'imageurl', 'score', 'title', 'user', 'posturl']
+	def setPost(self, line, postfields = ['date', 'imageurl', 'score', 'title', 'user', 'posturl']):
 		i = 0
-		
+
 		for field in str.split(str.replace(line,'\r\n', ''), ','):
 			self.post[postfields[i]] = field
 			i += 1
@@ -80,8 +80,6 @@ class ArchiveHelper():
 		# if writes occur and no lines are lost, delete temp file
 		elif self.readCount == self.writeCount:
 			os.remove(self.tempFilename)
-		
-		else: 
-			print('Error: some lines were lost when processing ' + self.filename)
 
-	
+		else:
+			print('Error: some lines were lost when processing ' + self.filename)

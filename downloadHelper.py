@@ -2,9 +2,13 @@ from imgurdl import ImgurDL
 import mimetypes
 import os
 import urllib3
+import certifi
+import shutil
+from bs4 import BeautifulSoup as bs
+from time import sleep
 
 class DownloadHelper():
-	def __init__(self):
+	def __init__(self, post):
 		# setup mimetypes
 		mimetypes.init()
 		self.filetypes = tuple(self.getExtensionsForType('image'))
@@ -19,18 +23,19 @@ class DownloadHelper():
 		self.args = {}
 
 		# initialize post info list
-		self.post = {}
+		self.post = post
 
-		# output flag: rogue, removed, downloaded, skipped, archive
+		# output flag: rogue, removed, downloaded, archive, youtube
 		# this is the folder the post will be moved to
 		self.outputFlag = ''
 
+		# Establish a HTTP connection pool manager
+		self.http = urllib3.PoolManager(
+			cert_reqs='CERT_REQUIRED',
+			ca_certs=certifi.where())
 
 	def analyze(self):
 		# analyzes an image url and checks if it contains a known filetype or domain. If not, the url is marked as rogue. If either exist, the download is viable and and argument list is built
-
-		# reset args
-		self.args = {}
 
 		url = self.post['imageurl']
 		self.args['url'] = url
@@ -55,79 +60,146 @@ class DownloadHelper():
 					self.post['imageurl'] = url
 					self.args['url'] = url
 
-
 	def download(self, url, domain='', fileExt=''):
 		# parse url to determine how it should be handled
-		# if the image downloads successfully, imagepath defines where it was saved and outputFlag is set to 'downloaded'
-		# if the image fail to download, imagepath is blank and outputFlag is set to 'removed'
-		# if the url is youtube, imagepath is blank and outputFlag is set to 'video'
+		link = ''
 
-		if domain == 'imgur':
-			if fileExt != '':
-				# cut off file extension as it is not supported by imgurdl
-				url = url.split(fileExt)[0]
-			self.downloadImgur(url)
+		if domain == 'imgur' and fileExt == '':
+			link = self.parseImgur(url)
 
 		elif domain == 'youtube' or domain == 'youtu.be':
-			self.post['imagepath'] = ''
-			self.outputflag = 'video'
+			link = ''
+			self.outputflag = 'youtube'
 
 		elif domain == 'fbcdn':
-			self.downloadFacebook(url)
+			link = self.parseReddit()
 
 		elif fileExt != '':
-			self.downloadGeneral(url)
+			link = url
 
 		elif domain == 'reddituploads':
-			self.downloadReddituploads(url)
+			link = self.parseReddit()
 
 		elif domain == 'gfycat':
-			self.downloadGfycat(url)
+			link = self.parseGfycat(url)
 
+		# download image(s)
+		if not self.outputFlag:
+			out_path = os.path.join('images', self.post['date'].replace(':', '-'))
+			if link and type(link) == str:
+				fileExt = '.' + link.split('?')[0].split('.')[-1]
+				out_path = out_path + fileExt
+				r = self.http.request('GET', link, preload_content=False)
+				if r.getheaders()['ETag'] == '"d835884373f4d6c8f24742ceabe74946"':
+					# image removed on imgur. redirected to removed.png
+					outputFlag = 'removed'
+				else:
+					with open(out_path, 'wb') as out_file:
+						shutil.copyfileobj(r, out_file)
+					self.outputFlag = 'downloaded'
+				sleep(0.5)
+
+			elif link and type(link) == list:
+				i = 0
+				for lin in link:
+					fileExt = '.' + lin.split('?')[0].split('.')[-1]
+					out_path_num = out_path + '_{0:02d}'.format(i) + fileExt
+					with self.http.request('GET', lin, preload_content=False) as r, open(out_path_num, 'wb') as out_file:
+						shutil.copyfileobj(r, out_file)
+					i += 1
+					sleep(0.5)
+				self.outputFlag = 'downloaded'
+
+
+	def parseImgur(self, url):
+		albumFlag = False
+
+		# check if link is an album
+		if '/a/' in url:
+			albumFlag = True
+
+		# get imgur page
+
+		# All of the image links are inside div tags in the body
+		html = self.http.urlopen('GET', url, preload_content = False)
+		# Make sure a successful HTTP request was made.
+		if html.status != 200:
+			print("HTTP {0}, skipping {1}".format(html.status, self.post['date']))
+			self.outputFlag = 'removed'
+			return ''
+
+		# create BeautifulSoup object for html parsing
+		soup = bs(html.data, 'html.parser')
+
+		# set up list for links
+		links = []
+
+		# find all post image and video (gifv) links
+		data = soup.findAll('div', attrs={'class':'post-image'})
+		for div in data:
+			for a in div:
+				if a.name == 'img':
+					links.append('https:' + a['src'])
+				# if image is in a zoom container
+				if a.name == 'a':
+					links.append('https:' + a['href'])
+				# if the image is a gifv, imgur converts it into a video
+				if a.name == 'div':
+					for b in a:
+						if b.name == 'meta':
+							if 'gif' in b['content']:
+								links.append(b['content'].replace('gifv', 'gif'))
+
+		if len(links) == 1:
+			return links[0]
 		else:
-			raise Exception
+			return links
 
+	def parseReddit(self):
+		# go to reddit post to find image url
+		url = 'https://reddit.com' + self.post['posturl']
 
-	def downloadGeneral(self, url):
-		# urls with an image and a known extension
-		# should be pretty straightforward
-		self.post['imagepath'] = ''
-		self.outputFlag = 'archive'
+		# All of the image links are inside div tags in the body
+		html = self.http.urlopen('GET', url, preload_content = False)
 
-	def downloadImgur(self, url):
-		# use ImgurDL
-		self.post['imagepath'] = ''
-		self.outputFlag = 'archive'
+		# Make sure a successful HTTP request was made.
+		if html.status != 200:
+			print("HTTP {0}, skipping {1}".format(html.status, self.post['date']))
+			self.outputFlag = 'removed'
+			return ''
 
+		# create BeautifulSoup object for html parsing
+		soup = bs(html.data, 'html.parser')
 
-	def downloadFacebook(self, url):
-		# need to get me_irl post url for the picture
-		self.post['imagepath'] = ''
-		self.outputFlag = 'archive'
+		data = soup.find('img', attrs={'class':'preview'})
 
+		return data['src']
 
-	def downloadReddituploads(self, url):
-		# need to find out image type when http request is made
-		self.post['imagepath'] = ''
-		self.outputFlag = 'archive'
+	def parseGfycat(self, url):
+		# parse page header for video url
 
+		# All of the image links are inside div tags in the body
+		html = self.http.urlopen('GET', url, preload_content = False)
 
-	def downloadGfycat(self, url):
-		# gotta parse html page for the image
-		self.post['imagepath'] = ''
-		self.outputFlag = 'archive'
+		# Make sure a successful HTTP request was made.
+		if html.status != 200:
+			print("HTTP {0}, skipping {1}".format(html.status, self.post['date']))
+			self.outputFlag = 'removed'
+			return ''
 
+		# create BeautifulSoup object for html parsing
+		soup = bs(html.data, 'html.parser')
 
-	def setPost(self, post):
-		self.post = post
+		# find meta tag with video in it
+		data = soup.find('meta', attrs={'property':'og:video'})
 
+		return data["content"]
 
 	def getExtensionsForType(self, generalType):
 		for ext in mimetypes.types_map:
 			if mimetypes.types_map[ext].split('/')[0] == generalType:
 				yield ext
 			yield '.gifv'
-
 
 	def run(self):
 		# analyze the post

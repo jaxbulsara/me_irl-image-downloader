@@ -3,7 +3,6 @@
 # listDir.
 
 import os
-import logging
 import codecs # to handle Unicode characters
 
 class ArchiveHelper():
@@ -35,7 +34,7 @@ class ArchiveHelper():
 
 	def setup(self, dateIndex, scoreRangeIndex):
 		# sets up the data filename based on indentifiers and creates a temp file and opens it to read
-
+		
 		# construct filename based on date and score range
 		self.filename = os.path.join(self.dates[dateIndex], self.scoreRanges[scoreRangeIndex])
 

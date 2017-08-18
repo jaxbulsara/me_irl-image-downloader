@@ -9,12 +9,12 @@ from bs4 import BeautifulSoup as bs
 class ImgurDL:
     """ A class to download images and albums from Imgur (TM).
 
-    This script can be called from the command-line or the class can be used 
+    This script can be called from the command-line or the class can be used
     on its own.
     """
 
     def __init__(self):
-        # Flag to use the default directory, which will be the same as the 
+        # Flag to use the default directory, which will be the same as the
         # album or image ID. (E.g., /a/abcde will be saved to ./abcde/)
         self.use_default_directory = True
 
@@ -46,7 +46,7 @@ class ImgurDL:
         return token
 
     def is_album(self, url):
-        """ Parses a URL for the album directory. 
+        """ Parses a URL for the album directory.
 
         Return True if the album URL is found (e.g., /a/token, or imgur.com/a/token)
         Return False otherwise.
@@ -83,14 +83,21 @@ class ImgurDL:
             # set up list for links
             filenames = []
 
-            # find all post image links
+            # find all post image and video (gifv) links
             data = soup.findAll("div", attrs={"class":"post-image"})
             for div in data:
                 for a in div:
                     if a.name == "a":
                         # links are in the form //i.imgur.com/[token].[file extension]
                         # this will take only the filename
-                        filenames.append(a["href"].split('/')[-1])
+                        filenames.append(a["href"].split("/")[-1])
+                    # if the image is a gifv, imgur converts it into a video
+                    if a.name == "div":
+                        for b in a:
+                            if b.name == "meta":
+                                if "gif" in b["content"]:
+                                    filenames.append(b["content"][:-1].split("/")[-1])
+
 
             # Extract each matched URL and add it to a set.
             domain = "http://i.imgur.com/"
@@ -110,9 +117,9 @@ class ImgurDL:
 
 
     def save_images(self):
-        """ Save the images to the disk. """        
+        """ Save the images to the disk. """
         for url, odir, ofile in sorted(list(self.download_list)):
-            
+
             # Produce the absolute output path.
             opath = os.path.abspath(os.path.join(odir, ofile))
 
@@ -162,14 +169,14 @@ def debug(imgur):
         print("Debug mode: On")
         print("\nOutput directory: {0}".format(imgur.output_dir))
         print("====== Downloads ========")
-        
+
         i = 0
         for item in imgur.token_list:
             i += 1
             (token, token_type) = item
             print("{0}. {1}: {2}".format(i, token_type.title(), token))
         print("\n")
-        
+
 
 def main(argv):
     global _debug
@@ -193,7 +200,7 @@ def main(argv):
         if opt in ("-h", "--help"):
             ImgurDL.usage()
             sys.exit()
-        
+
         elif opt in ("-d", "--debug"):
             # Enable extra debug information to be printed to stdout.
             _debug = True
@@ -201,7 +208,7 @@ def main(argv):
         elif opt in ("-o", "--out"):
             imgur.use_default_directory = False
             imgur.output_dir = arg
-        
+
         elif opt in ("-a", "--albums"):
             album_args = arg.split(" ")
             _album_flag = True
@@ -209,7 +216,7 @@ def main(argv):
             for album in album_args:
                 token = imgur.parse_token(album)
                 imgur.token_list.add( (token, "album") )
-            
+
         elif opt in ("-i", "--images"):
             image_args = arg.split(" ")
             _img_flag = True
@@ -233,17 +240,17 @@ def main(argv):
             imgur.token_list.add( (token, "album") )
         else:
             _album_flag = True
-        
+
         for token in img_args:
             imgur.token_list.add( (token, "image") )
         else:
             _img_flag = True
-    
+
     # Download the images passed in the options.
     if _album_flag or _img_flag:
         # If requested, print debug information.
         debug(imgur)
-    
+
         imgur.extract_urls(imgur.token_list)
         imgur.save_images()
     else:

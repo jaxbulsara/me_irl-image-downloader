@@ -6,6 +6,7 @@
 import logging
 from os import listdir
 import mimetypes
+import traceback
 
 from archiveHelper import ArchiveHelper
 from downloadHelper import DownloadHelper
@@ -16,22 +17,19 @@ def main():
 	numberOfScoreRanges = 5
 
 	archiveHelper = ArchiveHelper()
-	downloadHelper = DownloadHelper()
 
 	for i in range(1): # months
 		for j in range(1): # score buckets
 			archiveHelper.setup(i,j)
 
-			try:
-				f = open('testing/sortTest.txt', 'w')
-
-				# read file line by line
-				for line in archiveHelper.f:
+			# read file line by line
+			for line in archiveHelper.f:
+				try:
 					# extract post data
 					archiveHelper.setPost(line)
 
 					# send post to downloadHelper
-					downloadHelper.setPost(archiveHelper.post)
+					downloadHelper = DownloadHelper(archiveHelper.post)
 
 					# run download helper
 					downloadHelper.run()
@@ -39,11 +37,12 @@ def main():
 					# transfer post to proper directory
 					archiveHelper.transfer(downloadHelper.post, downloadHelper.outputFlag)
 
-					i += 1
+				except Exception as e:
+					print('Error on post ' + archiveHelper.post['date'])
+					traceback.print_exc()
+					archiveHelper.transfer(downloadHelper.post, 'archive')
 
-			finally:
-				f.close()
-				archiveHelper.cleanup()
+			archiveHelper.cleanup()
 
 
 if __name__ == '__main__':

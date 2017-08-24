@@ -32,21 +32,32 @@ class ArchiveHelper():
 		# initialze post info container
 		self.post = {}
 
+		# flag to skip current file and move on
+		self.skipFlag = False
+
 	def setup(self, dateIndex, scoreRangeIndex):
 		# sets up the data filename based on indentifiers and creates a temp file and opens it to read
-		
+
 		# construct filename based on date and score range
 		self.filename = os.path.join(self.dates[dateIndex], self.scoreRanges[scoreRangeIndex])
 
-		# construct temp filename in archive
-		self.tempFilename = self.filenameIn(self.archive) + '.tmp'
+		# reset skipFlag
+		self.skipFlag = False
 
-		# create temp file for reading
-		os.rename(self.filenameIn(self.archive), self.tempFilename)
-		print('Renamed ' + self.filenameIn(self.archive) + ' to ' + self.tempFilename)
+		try:
+			# construct temp filename in archive
+			self.tempFilename = self.filenameIn(self.archive) + '.tmp'
 
-		# open temp file for reading
-		self.f = codecs.open(self.tempFilename, 'r', 'utf-8')
+			# create temp file for reading
+			os.rename(self.filenameIn(self.archive), self.tempFilename)
+			print('Renamed ' + self.filenameIn(self.archive) + ' to ' + self.tempFilename)
+
+			# open temp file for reading
+			self.f = codecs.open(self.tempFilename, 'r', 'utf-8')
+
+		except FileNotFoundError:
+			print('Dump file {} doesn\'t exist. Moving to next file.'.format(self.filenameIn(self.archive)))
+			self.skipFlag = True
 
 	def filenameIn(self, folder):
 		# returns a path to the data file inside the specified folder

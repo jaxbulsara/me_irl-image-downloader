@@ -4,6 +4,7 @@ import os
 import urllib3
 import certifi
 import shutil
+import requests
 from bs4 import BeautifulSoup as bs
 from time import sleep
 
@@ -54,10 +55,9 @@ class DownloadHelper():
 
 			if url.split('?')[0].endswith(self.filetypes):
 				self.args['fileExt'] = '.' + url.split('?')[0].split('.')[-1]
-				if self.args['fileExt'] == '.gifv':
-					self.args['fileExt'] = '.gif'
-					url = url.replace('gifv', 'gif')
-					self.post['imageurl'] = url
+				if self.args['fileExt'] == '.gif':
+					self.args['fileExt'] = '.gifv'
+					url = url.replace('gif', 'gifv')
 					self.args['url'] = url
 
 	def download(self, url, domain='', fileExt=''):
@@ -85,30 +85,13 @@ class DownloadHelper():
 
 		# download image(s)
 		if not self.outputFlag:
-			out_path = os.path.join('images', self.post['date'].replace(':', '-'))
-			if link and type(link) == str:
-				fileExt = '.' + link.split('?')[0].split('.')[-1]
-				out_path = out_path + fileExt
-				r = self.http.request('GET', link, preload_content=False)
-				if r.getheaders()['ETag'] == '"d835884373f4d6c8f24742ceabe74946"':
-					# image removed on imgur. redirected to removed.png
-					outputFlag = 'removed'
-				else:
-					with open(out_path, 'wb') as out_file:
-						shutil.copyfileobj(r, out_file)
-					self.outputFlag = 'downloaded'
-				sleep(0.5)
-
-			elif link and type(link) == list:
-				i = 0
-				for lin in link:
-					fileExt = '.' + lin.split('?')[0].split('.')[-1]
-					out_path_num = out_path + '_{0:02d}'.format(i) + fileExt
-					with self.http.request('GET', lin, preload_content=False) as r, open(out_path_num, 'wb') as out_file:
-						shutil.copyfileobj(r, out_file)
-					i += 1
-					sleep(0.5)
-				self.outputFlag = 'downloaded'
+			try:
+				self.saveImage(link)
+			except urllib3.exceptions.MaxRetryError as e:
+				print('Connection failed on: ' + self.post['date'])
+				print('Trying to download from reddit.')
+				link = self.parseReddit()
+				self.saveImage(link)
 
 
 	def parseImgur(self, url):
@@ -144,11 +127,12 @@ class DownloadHelper():
 				if a.name == 'a':
 					links.append('https:' + a['href'])
 				# if the image is a gifv, imgur converts it into a video
+				# download the mp4 version
 				if a.name == 'div':
 					for b in a:
 						if b.name == 'meta':
-							if 'gif' in b['content']:
-								links.append(b['content'].replace('gifv', 'gif'))
+							if 'mp4' in b['content']:
+								links.append(b['content'])
 
 		if len(links) == 1:
 			return links[0]
@@ -194,6 +178,43 @@ class DownloadHelper():
 		data = soup.find('meta', attrs={'property':'og:video'})
 
 		return data["content"]
+
+	def saveImage(self, link):
+		out_path = os.path.join('images', self.post['date'].replace(':', '-'))
+		if link and type(link) == str:
+			fileExt = '.' + link.split('?')[0].split('.')[-1]
+			out_path = out_path + fileExt
+			r = self.http.request('GET', link, preload_content=False)
+			isRemoved = False
+			try:
+				if r.getheaders()['ETag'] == '"d835884373f4d6c8f24742ceabe74946"':
+					isRemoved = True
+					outputFlag = 'removed'
+			except KeyError:
+				pass
+			finally:
+				if not isRemoved:
+					try:
+						with open(out_path, 'wb') as out_file:
+							shutil.copyfileobj(r, out_file)
+					except FileNotFoundError:
+						os.makedirs('images')
+						with open(out_path, 'wb') as out_file:
+							shutil.copyfileobj(r, out_file)
+					self.outputFlag = 'downloaded'
+					print('Downloaded: {} as {}'.format(link, out_path))
+			sleep(0.5)
+
+		elif link and type(link) == list:
+			i = 0
+			for lin in link:
+				fileExt = '.' + lin.split('?')[0].split('.')[-1]
+				out_path_num = out_path + '_{0:02d}'.format(i) + fileExt
+				with self.http.request('GET', lin, preload_content=False) as r, open(out_path_num, 'wb') as out_file:
+					shutil.copyfileobj(r, out_file)
+				i += 1
+				sleep(0.5)
+			self.outputFlag = 'downloaded'
 
 	def getExtensionsForType(self, generalType):
 		for ext in mimetypes.types_map:

@@ -17,6 +17,9 @@ class DownloadHelper():
 		# domains that require special handling
 		self.domains = ('imgur', 'gfycat', 'youtube', 'youtu.be', 'reddituploads', 'fbcdn')
 
+		# folder where images are stored
+		self.imagePath = 'images'
+
 		# to check whether the download is to proceed or has succeeded
 		self.downloadFlag = True
 
@@ -55,10 +58,6 @@ class DownloadHelper():
 
 			if url.split('?')[0].endswith(self.filetypes):
 				self.args['fileExt'] = '.' + url.split('?')[0].split('.')[-1]
-				if self.args['fileExt'] == '.gif':
-					self.args['fileExt'] = '.gifv'
-					url = url.replace('gif', 'gifv')
-					self.args['url'] = url
 
 	def download(self, url, domain='', fileExt=''):
 		# parse url to determine how it should be handled
@@ -67,6 +66,13 @@ class DownloadHelper():
 		if domain == 'imgur' and fileExt == '':
 			link = self.parseImgur(url)
 
+		if domain == 'imgur' and (fileExt == '.gifv' or fileExt == '.gif'):
+			# change imgur gif links to gifv
+			if fileExt == '.gif':
+				fileExt = '.gifv'
+				url = url.replace('gif', 'gifv')
+			link = self.parseGifv(url)
+
 		elif domain == 'youtube' or domain == 'youtu.be':
 			link = ''
 			self.outputflag = 'youtube'
@@ -74,21 +80,22 @@ class DownloadHelper():
 		elif domain == 'fbcdn':
 			link = self.parseReddit()
 
+		elif domain == 'gfycat':
+			link = self.parseGifv(url)
+
+		elif domain == 'reddituploads':
+			self.downloadRedditUploads(url)
+
 		elif fileExt != '':
 			link = url
 
-		elif domain == 'reddituploads':
-			link = self.parseReddit()
-
-		elif domain == 'gfycat':
-			link = self.parseGfycat(url)
 
 		# download image(s)
 		if not self.outputFlag:
 			try:
 				self.saveImage(link)
 			except urllib3.exceptions.MaxRetryError as e:
-				print('Connection failed on: ' + self.post['date'])
+				print('Connection failed on: {} - {}'.format(self.post['date'],link))
 				print('Trying to download from reddit.')
 				link = self.parseReddit()
 				self.saveImage(link)
@@ -140,6 +147,11 @@ class DownloadHelper():
 			return links
 
 	def parseReddit(self):
+		# SKIP LINKS LIKE THIS FOR NOW
+		print('Unsupported link. Transferring {} - {} back to archive.'.format(self.post['date'], self.post['imageurl']))
+		self.outputFlag = 'archive'
+		return ''
+
 		# go to reddit post to find image url
 		url = 'https://reddit.com' + self.post['posturl']
 
@@ -159,17 +171,30 @@ class DownloadHelper():
 
 		return data['src']
 
-	def parseGfycat(self, url):
+	def parseGifv(self, url):
 		# parse page header for video url
+
+		# check if url is direct link to .mp4
+		if '.mp4' in url:
+			return url
 
 		# All of the image links are inside div tags in the body
 		html = self.http.urlopen('GET', url, preload_content = False)
 
 		# Make sure a successful HTTP request was made.
 		if html.status != 200:
-			print("HTTP {0}, skipping {1}".format(html.status, self.post['date']))
+			print("Skipped: HTTP {0} on {1}".format(html.status, self.post['date']))
 			self.outputFlag = 'removed'
 			return ''
+
+		# check if image is removed from imgur
+		try:
+			if html.headers['ETag'] == '"d835884373f4d6c8f24742ceabe74946"':
+				print('Skipped: Image {} removed from imgur.'.format(self.post['date']))
+				self.outputFlag = 'removed'
+				return ''
+		except KeyError:
+			pass
 
 		# create BeautifulSoup object for html parsing
 		soup = bs(html.data, 'html.parser')
@@ -177,10 +202,46 @@ class DownloadHelper():
 		# find meta tag with video in it
 		data = soup.find('meta', attrs={'property':'og:video'})
 
-		return data["content"]
+		# if og:video not found, this is probably an imgur link
+		if not data:
+			data = soup.find('meta', attrs={'itemprop':'contentURL'})
+
+		# if a video is not found, this is probably a static image
+		if not data:
+			data = soup.find('meta', attrs={'property':'og:image'})
+
+		return data['content']
+
+	def downloadRedditUploads(self, url):
+		# All of the image links are inside div tags in the body
+
+		# SKIP LINKS LIKE THIS FOR NOW
+		# print('Unsupported link. Transferring {} - {} back to archive.'.format(self.post['date'], self.post['imageurl']))
+		# self.outputFlag = 'archive'
+		# return ''
+
+		r = self.http.request('GET', url, preload_content = False)
+
+		# Make sure a successful HTTP request was made.
+		if r.status != 200:
+			print("Skipped: HTTP {0} on {1}".format(r.status, self.post['date']))
+			self.outputFlag = 'removed'
+			return ''
+
+		fileExt = '.' + r.headers['Content-Type'].split('/')[-1]
+
+		out_path = os.path.join(self.imagePath, self.post['date'].replace(':', '-')) + fileExt
+
+		with open(out_path, 'wb') as out_file:
+			shutil.copyfileobj(r, out_file)
+
+		self.outputFlag = 'downloaded'
+		print('Downloaded: {} as {}'.format(url, out_path))
+		sleep(0.5)
+
 
 	def saveImage(self, link):
-		out_path = os.path.join('images', self.post['date'].replace(':', '-'))
+		out_path = os.path.join(self.imagePath, self.post['date'].replace(':', '-'))
 		if link and type(link) == str:
 			fileExt = '.' + link.split('?')[0].split('.')[-1]
 			out_path = out_path + fileExt
@@ -188,8 +249,9 @@ class DownloadHelper():
 			isRemoved = False
 			try:
 				if r.getheaders()['ETag'] == '"d835884373f4d6c8f24742ceabe74946"':
+					print('Skipped: Image {} removed from imgur.'.format(self.post['date']))
 					isRemoved = True
-					outputFlag = 'removed'
+					self.outputFlag = 'removed'
 			except KeyError:
 				pass
 			finally:
@@ -198,7 +260,7 @@ class DownloadHelper():
 						with open(out_path, 'wb') as out_file:
 							shutil.copyfileobj(r, out_file)
 					except FileNotFoundError:
-						os.makedirs('images')
+						os.makedirs(self.imagePath)
 						with open(out_path, 'wb') as out_file:
 							shutil.copyfileobj(r, out_file)
 					self.outputFlag = 'downloaded'
@@ -212,11 +274,13 @@ class DownloadHelper():
 				out_path_num = out_path + '_{0:02d}'.format(i) + fileExt
 				with self.http.request('GET', lin, preload_content=False) as r, open(out_path_num, 'wb') as out_file:
 					shutil.copyfileobj(r, out_file)
+				print('Downloaded: {} as {}'.format(lin, out_path))
 				i += 1
 				sleep(0.5)
 			self.outputFlag = 'downloaded'
 
 	def getExtensionsForType(self, generalType):
+		# create list of image filetypes
 		for ext in mimetypes.types_map:
 			if mimetypes.types_map[ext].split('/')[0] == generalType:
 				yield ext

@@ -27,7 +27,6 @@ class ArchiveHelper():
 		# read/write counters
 		self.readCount = 0
 		self.writeCount = 0
-		self.writeFlag = False
 
 		# initialze post info container
 		self.post = {}
@@ -102,9 +101,7 @@ class ArchiveHelper():
 
 		# write post data to file
 		for key, value in self.post.items():
-			if key == 'imagepath' and value == '':
-				break
-			elif firstKey:
+			if firstKey:
 				firstKey = False
 			else:
 				f.write(',')
@@ -120,6 +117,7 @@ class ArchiveHelper():
 
 	def cleanup(self):
 		self.f.close()
+		# print('{} {}'.format(self.readCount, self.writeCount))
 
 		# if no writes occur, rename temp file back to original
 		if self.writeCount == 0:
